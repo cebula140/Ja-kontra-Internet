@@ -1,0 +1,10 @@
+{
+  "SCREEN_WIDTH": 1920,
+  "SCREEN_HEIGHT": 1080,
+  "CRT": true,
+  "SHOW_FPS": true,
+  "VOLUME_ALL": 1.0,
+  "VOLUME_MUSIC": 0.05000000000000002,
+  "VOLUME_SFX": 0.8,
+  "EDU_ALWAYS_ON": true
+}
