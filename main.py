@@ -1,5 +1,3 @@
-# main.py
-# Wymagania: pygame
 import pygame
 import random
 import sys
@@ -15,7 +13,14 @@ from library import (
 
 pygame.init()
 pygame.font.init()
-pygame.mixer.init()
+try:
+    pygame.mixer.init()
+    audio_enabled = True
+except pygame.error:
+    print("Brak urządzenia audio - dźwięk wyłączony.")
+    audio_enabled = False
+
+
 
 # Ustawienia i pliki
 settings = load_settings()
@@ -72,6 +77,10 @@ if assets_paths.get("jas_sprite_path"):
         jas_sprite_img = None
 
 def apply_volume_settings():
+    if not audio_enabled:
+        return
+
+
     vol_all = float(settings.get("VOLUME_ALL", 1.0))
     vol_music = float(settings.get("VOLUME_MUSIC", 0.6))
     vol_sfx = float(settings.get("VOLUME_SFX", 0.8))
@@ -82,8 +91,9 @@ def apply_volume_settings():
         assets["sfx_hit"].set_volume(max(0.0, min(1.0, vol_all * vol_sfx)))
 
 apply_volume_settings()
-if music_loaded:
+if audio_enabled and music_loaded:
     pygame.mixer.music.play(-1)
+
 
 # Zmienne globalne gry
 mode = "title"
@@ -112,7 +122,7 @@ resolution_buttons = [
     for i, (w, h) in enumerate([(1920,1080),(1600,900),(1280,720),(800,600)])
 ]
 
-# Kontrolki dzwieku
+# Kontrolki 
 crt_toggle_rect = pygame.Rect(SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2 + 40, 300, 40)
 fps_toggle_rect = pygame.Rect(SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2 + 90, 300, 40)
 vol_all_minus = pygame.Rect(SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2 + 150, 32, 32)
@@ -314,18 +324,24 @@ def check_edu_answer():
         edu_reward = random.choice(["bomb", "life"])
         if edu_reward == "bomb":
             if bombs < max_bombs:
-                bombs += 1
+                progress["bombs"] = progress.get("bombs", 0) + 1
+                bombs = progress["bombs"]
+                save_progress(progress)
+
                 edu_result_text += " \\n+1 BOMBA!"
             else:
                 edu_result_text += " \\nMasz juz maksymalna liczbe bomb!"
         elif edu_reward == "life":
             if lives < max_lives:
-                lives += 1
+                progress["lives"] = progress.get("lives", 1) + 1
+                lives = progress["lives"]
+                save_progress(progress)
+
                 edu_result_text += " \\n+1 ZYCIE!"
             else:
                 edu_result_text += " \\nMasz juz maksymalna liczbe zyc!"
             
-        if assets.get("sfx_hit"):
+        if assets.get("sfx_hit") and audio_enabled:
             try:
                 assets["sfx_hit"].play()
             except Exception:
@@ -409,10 +425,10 @@ def apply_new_resolution(w, h):
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 
 # Stan gry
-lives = 1
+lives = progress["lives"]
 iframes = 0
 IFRAME_TIME = 60
-bombs = 0
+bombs = progress["bombs"]
 bomb_key_pressed = False
 
 def reset_game():
@@ -420,7 +436,7 @@ def reset_game():
     global count, bombs, lives, current_subtitle
     bullets.clear(); bulletsHorizontal.clear(); spiral_bullets.clear(); zigzag_bullets.clear()
     homing_blue.clear(); squares.clear(); explosions.clear()
-    count = 0; bombs = 0; lives = 1
+    count = 0; bombs = progress["bombs"]; lives = progress["lives"]
     player.centerx = SCREEN_WIDTH // 2
     player.centery = SCREEN_HEIGHT // 2
     current_subtitle = random.choice(["wersja alfa - lataj buga", "znaleziono 3 README i 1 kotka", "debug: ON - nie mow nikomu"])
@@ -431,7 +447,7 @@ def use_bomb(x, y):
         return
     bombs -= 1
     explosions.append({"x": x, "y": y, "r": 1, "alive": True})
-    if assets.get("bomb_sound"):
+    if assets.get("bomb_sound") and audio_enabled:
         try:
             assets["bomb_sound"].play()
         except Exception:
@@ -554,7 +570,7 @@ def check_collisions():
     if hit:
         lives -= 1
         iframes = IFRAME_TIME
-        if assets.get("sfx_hit"):
+        if assets.get("sfx_hit") and audio_enabled:
             try: assets["sfx_hit"].play()
             except Exception: pass
         if lives <= 0:
